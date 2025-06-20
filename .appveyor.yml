@@ -1,0 +1,17 @@
+version: 1.0.{build}
+
+environment:
+  NGROK_AUTH_TOKEN: 2nyiyWrhpT6OwyUoaoZ2zdE9nNo_7KtHBQxaox3Wx2t9qBHTT
+
+build:
+  mode: Script
+  script:
+    - powershell -Command "Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip -UseBasicParsing"
+    - powershell -Command "Expand-Archive ngrok.zip -DestinationPath ngrok -Force"
+    - powershell -Command ".\\ngrok\\ngrok.exe authtoken $env:NGROK_AUTH_TOKEN"
+    - powershell -Command "Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 0"
+    - powershell -Command "Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'"
+    - powershell -Command "Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'UserAuthentication' -Value 1"
+    - powershell -Command "net user runneradmin Binhminh12"
+    - powershell -Command "wmic useraccount where 'name=\"runneradmin\"' set PasswordExpires=false"
+    - powershell -Command ".\\ngrok\\ngrok.exe tcp 3389"
