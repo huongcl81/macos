@@ -1,0 +1,44 @@
+version: 2.1
+
+jobs:
+  build:
+    resource_class: 'windows.medium'
+    machine:
+      image: 'windows-server-2022-gui:current'
+      shell: 'powershell.exe -ExecutionPolicy Bypass'
+    steps:
+      - checkout
+
+      - run:
+          name: Download ngrok
+          command: |
+            powershell -Command "Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip -UseBasicParsing"
+
+      - run:
+          name: Extract ngrok
+          command: |
+            powershell -Command "Expand-Archive ngrok.zip -DestinationPath ngrok -Force"
+
+      - run:
+          name: Add ngrok authtoken
+          command: |
+            powershell -Command ".\\ngrok\\ngrok.exe authtoken 2nyiyWrhpT6OwyUoaoZ2zdE9nNo_7KtHBQxaox3Wx2t9qBHTT"
+
+      - run:
+          name: Enable RDP
+          command: |
+            powershell -Command "Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name 'fDenyTSConnections' -Value 0"
+            powershell -Command "Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'"
+            powershell -Command "Set-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' -Name 'UserAuthentication' -Value 1"
+
+      - run:
+          name: Create admin user
+          command: |
+            net user admin Binhminh12 /add
+            net localgroup Administrators admin /add
+            powershell -Command "wmic useraccount where 'name=\"admin\"' set PasswordExpires=false"
+
+      - run:
+          name: Start ngrok TCP tunnel and keep alive
+          command: |
+            powershell -Command "Start-Process -FilePath .\\ngrok\\ngrok.exe -ArgumentList 'tcp 3389' -NoNewWindow -PassThru | Out-Null; while ($true) { Write-Host ('💤 still alive at '+ (Get-Date)); Start-Sleep -Seconds 10 }"
