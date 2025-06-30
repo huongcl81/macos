@@ -2,25 +2,22 @@ trigger:
 - main
 
 pool:
-  vmImage: 'windows-2025'
+  vmImage: 'windows-latest'
 
 steps:
-- powershell: |
-    Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
-  displayName: 'Download ngrok'
+- script: |
+    echo //main.cpp > main.cpp
+    echo #include <iostream> >> main.cpp
+    echo int main() { >> main.cpp
+    echo std::cout << "Hello from Azure DevOps!" << std::endl; >> main.cpp
+    echo return 0; >> main.cpp
+    echo } >> main.cpp
+  displayName: 'Create main.cpp'
 
-- powershell: Expand-Archive ngrok.zip
-  displayName: 'Extract ngrok'
+- script: |
+    cl /EHsc main.cpp /Fe:main.exe
+  displayName: 'Build main.cpp'
 
-- powershell: .\ngrok\ngrok.exe authtoken 2nyiyWrhpT6OwyUoaoZ2zdE9nNo_7KtHBQxaox3Wx2t9qBHTT
-  displayName: 'Authenticate ngrok'
-
-- powershell: |
-    Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-    Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-    Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
-    Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "Datnguyentv.com" -Force)
-  displayName: 'Enable Remote Desktop and Create User'
-
-- powershell: .\ngrok\ngrok.exe tcp 3389
-  displayName: 'Create ngrok Tunnel'
+- script: |
+    main.exe
+  displayName: 'Run main.exe'
