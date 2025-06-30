@@ -1,0 +1,17 @@
+name: reruner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rerun_job:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Trigger windows workflow
+      run: |
+        curl -X POST \
+          -H "Authorization: token ${{ secrets.MY_PAT_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d '{"ref":"main"}' \
+          https://api.github.com/repos/${{ github.repository }}/actions/workflows/windows.yml/dispatches
