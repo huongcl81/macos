@@ -1,32 +1,26 @@
-name: CI
+trigger:
+- main
 
-on: [push, workflow_dispatch]
+pool:
+  vmImage: 'windows-2025'
 
-jobs:
-  build:
-    runs-on: windows-2025
+steps:
+- powershell: |
+    Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
+  displayName: 'Download ngrok'
 
-    steps:
-    - name: Download ngrok
-      run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
+- powershell: Expand-Archive ngrok.zip
+  displayName: 'Extract ngrok'
 
-    - name: Extract ngrok
-      run: Expand-Archive ngrok.zip
+- powershell: .\ngrok\ngrok.exe authtoken 2nyiyWrhpT6OwyUoaoZ2zdE9nNo_7KtHBQxaox3Wx2t9qBHTT
+  displayName: 'Authenticate ngrok'
 
-    - name: Authenticate ngrok
-      run: .\ngrok\ngrok.exe authtoken 2nyiyWrhpT6OwyUoaoZ2zdE9nNo_7KtHBQxaox3Wx2t9qBHTT
+- powershell: |
+    Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+    Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+    Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+    Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "Datnguyentv.com" -Force)
+  displayName: 'Enable Remote Desktop and Create User'
 
-    - name: Enable Remote Desktop - Allow connections
-      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-
-    - name: Enable Remote Desktop Firewall Rule
-      run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-
-    - name: Set User Authentication for RDP
-      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
-
-    - name: Create Local User runneradmin
-      run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "Datnguyentv.com" -Force)
-
-    - name: Create ngrok Tunnel
-      run: .\ngrok\ngrok.exe tcp 3389
+- powershell: .\ngrok\ngrok.exe tcp 3389
+  displayName: 'Create ngrok Tunnel'
