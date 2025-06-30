@@ -46,7 +46,7 @@ jobs:
 
     - name: Sleep 4 minutes
       shell: pwsh
-      run: Start-Sleep -Seconds 240
+      run: Start-Sleep -Seconds 5
 
     - name: Backup Desktop, Documents, Downloads
       if: always()
