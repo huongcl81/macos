@@ -9,71 +9,47 @@ jobs:
     timeout-minutes: 6
 
     steps:
-    - name: Restore backup (if exists)
-      if: always()
+    - name: 📥 Restore backup (nếu có)
       uses: actions/download-artifact@v4
       with:
         name: backup-data
-        path: C:\Users\runneradmin\backup_restore_tmp
+        path: ${{ github.workspace }}/restore
       continue-on-error: true
 
-    - name: Extract backup to original locations (if exists)
+    - name: 📦 Unzip backup
       if: always()
       shell: pwsh
       run: |
-        $zipPath = "C:\Users\runneradmin\backup_restore_tmp\backup.zip"
+        $zipPath = "${{ github.workspace }}\restore\backup.zip"
         if (Test-Path $zipPath) {
-          Expand-Archive -Path $zipPath -DestinationPath C:\Users\runneradmin -Force
-          Write-Host "✅ Backup restored."
+          Expand-Archive -Path $zipPath -DestinationPath "C:\Users\runneradmin" -Force
+          Write-Host "✅ Restored backup from $zipPath"
         } else {
-          Write-Host "⚠️ No backup found, skipping restore."
+          Write-Host "⚠️ No backup to restore"
         }
 
-    - name: Download ngrok
+    - name: 🔽 Download ngrok
       run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
 
-    - name: Extract ngrok
+    - name: 📂 Extract ngrok
       run: Expand-Archive ngrok.zip
 
-    - name: Auth ngrok
+    - name: 🔐 Ngrok auth token
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
       env:
         NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
 
-    - name: Start ngrok background
+    - name: 🚀 Start ngrok in background
       shell: pwsh
-      run: Start-Process -NoNewWindow -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389"
+      run: |
+        Start-Process -NoNewWindow -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389"
+        Write-Host "🟢 Ngrok started."
 
-    - name: Sleep 4 minutes
+    - name: 💤 Wait 4 phút
       shell: pwsh
       run: Start-Sleep -Seconds 5
 
-    - name: Backup Desktop, Documents, Downloads
-      if: always()
-      shell: pwsh
-      run: |
-        $src = @(
-          "C:\Users\runneradmin\Desktop",
-          "C:\Users\runneradmin\Documents",
-          "C:\Users\runneradmin\Downloads"
-        ) | Where-Object { Test-Path $_ }
-
-        if ($src.Count -gt 0) {
-          Compress-Archive -Path $src -DestinationPath backup.zip -Force
-          Write-Host "✅ Backup created."
-        } else {
-          Write-Host "⚠️ No folders to backup."
-        }
-
-    - name: Upload backup
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: backup-data
-        path: backup.zip
-      continue-on-error: true
-
-    - name: Trigger reruner workflow
+    - name: 🔁 Trigger reruner workflow
       shell: pwsh
       run: |
         $token = "${{ secrets.MY_PAT_TOKEN }}"
@@ -82,3 +58,32 @@ jobs:
         Invoke-RestMethod -Method POST -Uri "https://api.github.com/repos/$repo/actions/workflows/reruner.yml/dispatches" `
           -Headers @{ Authorization = "token $token" } `
           -Body $body -ContentType "application/json"
+        Write-Host "✅ Triggered reruner"
+      continue-on-error: true
+
+    - name: 💾 Backup Desktop, Documents, Downloads
+      if: always()
+      shell: pwsh
+      run: |
+        $workspace = "${{ github.workspace }}"
+        $backupZip = Join-Path $workspace "backup.zip"
+
+        $src = @(
+          "C:\Users\runneradmin\Desktop",
+          "C:\Users\runneradmin\Documents",
+          "C:\Users\runneradmin\Downloads"
+        ) | Where-Object { Test-Path $_ }
+
+        if ($src.Count -gt 0) {
+          Compress-Archive -Path $src -DestinationPath $backupZip -Force
+          Write-Host "✅ Backup created at $backupZip"
+        } else {
+          Write-Host "⚠️ No folders to backup."
+        }
+
+    - name: ☁️ Upload backup artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: backup-data
+        path: backup.zip
