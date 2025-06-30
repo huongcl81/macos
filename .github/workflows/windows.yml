@@ -35,7 +35,9 @@ jobs:
     - name: Start ngrok background
       shell: pwsh
       run: Start-Process -NoNewWindow -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389"
-
+    - name: Sleep 5 minutes (keep ngrok alive)
+      shell: pwsh
+      run: Start-Sleep -Seconds 2
     - name: 💾 Backup Desktop/Documents/Downloads
       shell: pwsh
       run: |
@@ -58,10 +60,6 @@ jobs:
       with:
         name: backup-data
         path: D:\a\macos\macos\backup.zip
-
-    - name: Sleep 5 minutes (keep ngrok alive)
-      shell: pwsh
-      run: Start-Sleep -Seconds 300
 
     - name: Trigger reruner workflow
       shell: pwsh
