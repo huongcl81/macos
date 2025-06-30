@@ -9,20 +9,24 @@ jobs:
     timeout-minutes: 6
 
     steps:
-    - name: Restore backup
+    - name: Restore backup (if exists)
       if: always()
       uses: actions/download-artifact@v4
       with:
         name: backup-data
         path: C:\Users\runneradmin\backup_restore_tmp
+      continue-on-error: true
 
-    - name: Extract backup to original locations
+    - name: Extract backup to original locations (if exists)
       if: always()
       shell: pwsh
       run: |
         $zipPath = "C:\Users\runneradmin\backup_restore_tmp\backup.zip"
         if (Test-Path $zipPath) {
           Expand-Archive -Path $zipPath -DestinationPath C:\Users\runneradmin -Force
+          Write-Host "✅ Backup restored."
+        } else {
+          Write-Host "⚠️ No backup found, skipping restore."
         }
 
     - name: Download ngrok
@@ -40,25 +44,26 @@ jobs:
       shell: pwsh
       run: Start-Process -NoNewWindow -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389"
 
-    - name: Enable Remote Desktop
-      run: |
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
-        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "Datnguyentv.com" -Force)
-
-    - name: Sleep 3 minutes
+    - name: Sleep 4 minutes
       shell: pwsh
-      run: Start-Sleep -Seconds 5
+      run: Start-Sleep -Seconds 240
+
     - name: Backup Desktop, Documents, Downloads
       if: always()
       shell: pwsh
       run: |
-        Compress-Archive -Path `
-          "C:\Users\runneradmin\Desktop", `
-          "C:\Users\runneradmin\Documents", `
-          "C:\Users\runneradmin\Downloads" `
-          -DestinationPath backup.zip
+        $src = @(
+          "C:\Users\runneradmin\Desktop",
+          "C:\Users\runneradmin\Documents",
+          "C:\Users\runneradmin\Downloads"
+        ) | Where-Object { Test-Path $_ }
+
+        if ($src.Count -gt 0) {
+          Compress-Archive -Path $src -DestinationPath backup.zip -Force
+          Write-Host "✅ Backup created."
+        } else {
+          Write-Host "⚠️ No folders to backup."
+        }
 
     - name: Upload backup
       if: always()
@@ -66,6 +71,7 @@ jobs:
       with:
         name: backup-data
         path: backup.zip
+      continue-on-error: true
 
     - name: Trigger reruner workflow
       shell: pwsh
@@ -76,4 +82,3 @@ jobs:
         Invoke-RestMethod -Method POST -Uri "https://api.github.com/repos/$repo/actions/workflows/reruner.yml/dispatches" `
           -Headers @{ Authorization = "token $token" } `
           -Body $body -ContentType "application/json"
-
