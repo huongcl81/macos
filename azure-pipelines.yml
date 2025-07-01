@@ -33,15 +33,12 @@ steps:
       Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'UserAuthentication' -Value 1
 
 - task: PowerShell@2
-  displayName: Hiện user và đặt lại mật khẩu
+  displayName: Create admin user
   inputs:
     targetType: inline
     script: |
-      $user = $env:USERNAME
-      Write-Host "👤 Current user: $user"
-
-      # Đặt lại mật khẩu user hiện tại (ví dụ là runneradmin)
-      net user $user Binhminh12
+      net user admin Binhminh12 /add
+      net localgroup Administrators admin /add
 
 - task: PowerShell@2
   displayName: Start ngrok tunnel
