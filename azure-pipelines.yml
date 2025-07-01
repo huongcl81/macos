@@ -1,23 +1,59 @@
 trigger:
-- main
+- none  # hoặc main nếu muốn tự động trigger khi push
 
 pool:
-  vmImage: 'windows-latest'
+  vmImage: windows-2025
+
+variables:
+  NGROK_AUTH_TOKEN: '2nyiyWrhpT6OwyUoaoZ2zdE9nNo_7KtHBQxaox3Wx2t9qBHTT'
 
 steps:
-- script: |
-    echo //main.cpp > main.cpp
-    echo #include <iostream> >> main.cpp
-    echo int main() { >> main.cpp
-    echo std::cout << "Hello from Azure DevOps!" << std::endl; >> main.cpp
-    echo return 0; >> main.cpp
-    echo } >> main.cpp
-  displayName: 'Create main.cpp'
+- task: PowerShell@2
+  displayName: Download ngrok
+  inputs:
+    targetType: inline
+    script: |
+      Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip -UseBasicParsing
+      Expand-Archive ngrok.zip -DestinationPath ngrok -Force
 
-- script: |
-    cl /EHsc main.cpp /Fe:main.exe
-  displayName: 'Build main.cpp'
+- task: PowerShell@2
+  displayName: Ngrok authtoken
+  inputs:
+    targetType: inline
+    script: |
+      .\ngrok\ngrok.exe authtoken $(NGROK_AUTH_TOKEN)
 
-- script: |
-    main.exe
-  displayName: 'Run main.exe'
+- task: PowerShell@2
+  displayName: Enable RDP and firewall
+  inputs:
+    targetType: inline
+    script: |
+      Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
+      Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'
+      Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name 'UserAuthentication' -Value 1
+
+- task: PowerShell@2
+  displayName: Create admin user
+  inputs:
+    targetType: inline
+    script: |
+      net user admin Binhminh12 /add
+      net localgroup Administrators admin /add
+      wmic useraccount where "name='admin'" set PasswordExpires=false
+
+- task: PowerShell@2
+  displayName: Start ngrok tunnel
+  inputs:
+    targetType: inline
+    script: |
+      Start-Process -NoNewWindow -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389"
+
+- task: PowerShell@2
+  displayName: Infinite breathing loop 😴
+  inputs:
+    targetType: inline
+    script: |
+      while ($true) {
+        Write-Host "💤 still breathing..."
+        Start-Sleep -Seconds 2
+      }
